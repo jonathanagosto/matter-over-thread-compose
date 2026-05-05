@@ -1,0 +1,44 @@
+services:
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: autoheal
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal-app
+    network_mode: none
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+  otbr:
+    build:
+      context: .
+      dockerfile: Containerfile
+      labels:
+        autoheal-app: true
+    depends_on:
+      - autoheal
+    image: jonathanagosto/openthread-border-router:development
+    container_name: otbr
+    restart: always
+    network_mode: host
+    env_file: otbr.env
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - /var/lib/otbr:/data
+      - /run/dbus:/run/dbus:ro
+    labels:
+      autoheal-app: true
+  home-matterjs-server:
+    depends_on:
+      - autoheal
+      - otbr
+    image: ghcr.io/matter-js/matterjs-server:latest
+    container_name: matterjs-server
+    restart: always
+    network_mode: host
+    labels:
+      autoheal-app: true

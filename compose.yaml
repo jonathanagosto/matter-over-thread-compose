@@ -1,0 +1,46 @@
+services:
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: autoheal
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal-app
+    network_mode: none
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+  otbr:
+    depends_on:
+      - autoheal
+    image: jonathanagosto/openthread-border-router:main
+    container_name: otbr
+    restart: always
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - /var/lib/otbr:/data
+      - /run/dbus:/run/dbus:ro
+    environment:
+      - OT_INFRA_IF=$OT_INFRA_IF
+      - OT_THREAD_IF=$OT_THREAD_IF
+      - OT_LOG_LEVEL=$OT_LOG_LEVEL
+      - TZ=$TZ
+      - ANTENNA_ADDRESS=$ANTENNA_ADDRESS
+      - ANTENNA_PORT=$ANTENNA_PORT
+      - ANTENNA_BAUD_RATE=$ANTENNA_BAUD_RATE
+    labels:
+      autoheal-app: true
+  home-matterjs-server:
+    depends_on:
+      - autoheal
+      - otbr
+    image: ghcr.io/matter-js/matterjs-server:latest
+    container_name: matterjs-server
+    restart: always
+    network_mode: host
+    labels:
+      autoheal-app: true
